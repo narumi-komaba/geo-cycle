@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'widgets/custom_app_bar.dart';
 
 class MapScreen extends StatelessWidget {
   final String shopName;
@@ -19,22 +20,21 @@ class MapScreen extends StatelessWidget {
     final point = LatLng(lat, lng);
 
     return Scaffold(
-      appBar: AppBar(title: Text(shopName)),
+      appBar: CustomAppBar(title: shopName),
       body: FlutterMap(
         options: MapOptions(center: point, zoom: 15.0),
         children: [
           TileLayer(
-            urlTemplate:
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             subdomains: const ['a', 'b', 'c'],
           ),
           MarkerLayer(
             markers: [
               Marker(
-                point: LatLng(36.5657, 139.8836),
+                point: point,
                 width: 80,
                 height: 80,
-                child: Icon(Icons.location_on, color: Colors.red, size: 40),
+                child: const Icon(Icons.location_on, color: Colors.red, size: 40),
               ),
             ],
           ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'map_screen.dart';
+
+import 'widgets/custom_app_bar.dart';
+import 'search_results_screen.dart';
 
 void main() => runApp(GeoCycleApp());
 
@@ -10,8 +12,12 @@ class GeoCycleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '餃輪 GeoCycle',
-      home: GeoCycleHome(),
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: const Color(0xFFFFA410),
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      home: GeoCycleHome(),
     );
   }
 }
@@ -22,86 +28,137 @@ class GeoCycleHome extends StatefulWidget {
 }
 
 class _GeoCycleHomeState extends State<GeoCycleHome> {
-  double distance = 20, elevation = 200, time = 60;
-  int selectedGyotza = 0;
-  final List<String> gyotzaTypes = ['焼餃子', '水餃子', '揚げ餃子'];
+  String selectedCourse = '半日コース';
+  String selectedGyotza = '焼き餃子';
+  bool includeSightseeing = false;
+  final TextEditingController startController = TextEditingController();
 
-  Map<String, dynamic>? routeData;
+  final List<String> courseOptions = ['半日コース', '1日コース'];
+  final List<String> gyotzaTypes = ['焼き餃子', '揚げ餃子', '水餃子'];
 
   Future<void> fetchRoute() async {
     final url = Uri.parse('https://geo-cycle-api-300937800298.asia-northeast1.run.app/generate');
+    final startPoint = startController.text.trim().isEmpty
+      ? '宇都宮駅'
+      : startController.text.trim();
     final body = jsonEncode({
-      'distance': distance.toInt(),
-      'elevation': elevation.toInt(),
-      'time': time.toInt(),
-      'gyotza_type': gyotzaTypes[selectedGyotza],
+      'course_type': selectedCourse,
+      'gyoza_type': selectedGyotza,
+      'include_sightseeing': includeSightseeing,
+      'start_point': startPoint,
     });
 
     final res = await http.post(url, body: body, headers: {'Content-Type': 'application/json'});
 
     if (res.statusCode == 200) {
-      final responseText = utf8.decode(res.bodyBytes);  // ← ここが重要
+      final responseText = utf8.decode(res.bodyBytes);
       final data = jsonDecode(responseText);
-      setState(() {
-        routeData = data;
-      });
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SearchResultsScreen(results: data),
+        ),
+      );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("取得失敗")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("取得失敗")));
     }
+  }
+
+  Widget buildOptionButtons({
+    required List<String> options,
+    required String selected,
+    required void Function(String) onSelect,
+    required int itemsPerRow,
+    Color? selectedTextColor,
+  }) {
+    final spacing = 12.0;
+    final itemWidth = (MediaQuery.of(context).size.width - 32 - spacing * (itemsPerRow - 1)) / itemsPerRow;
+
+    return Wrap(
+      spacing: spacing,
+      runSpacing: spacing,
+      children: options.map((opt) {
+        final isSelected = opt == selected;
+        return SizedBox(
+          width: itemWidth,
+          height: 48,
+          child: OutlinedButton(
+            onPressed: () => onSelect(opt),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: isSelected ? const Color(0xFFFFA410) : Colors.white,
+              foregroundColor: isSelected ? (selectedTextColor ?? Colors.black87) : Colors.black87,
+              side: BorderSide(
+                color: isSelected ? const Color(0xFFFFA410) : Colors.grey.shade400,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(opt, style: const TextStyle(fontSize: 14)),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('餃輪 GeoCycle')),
+      appBar: const CustomAppBar(showBackButton: false),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: routeData == null
-            ? ListView(
-                children: [
-                  Text('距離: ${distance.toInt()} km'),
-                  Slider(value: distance, min: 5, max: 100, onChanged: (v) => setState(() => distance = v)),
-                  Text('標高: ${elevation.toInt()} m'),
-                  Slider(value: elevation, min: 0, max: 1000, onChanged: (v) => setState(() => elevation = v)),
-                  Text('時間: ${time.toInt()} 分'),
-                  Slider(value: time, min: 30, max: 180, onChanged: (v) => setState(() => time = v)),
-                  Text('餃子タイプ: ${gyotzaTypes[selectedGyotza]}'),
-                  DropdownButton(
-                    value: selectedGyotza,
-                    items: List.generate(gyotzaTypes.length, (i) => DropdownMenuItem(value: i, child: Text(gyotzaTypes[i]))),
-                    onChanged: (v) => setState(() => selectedGyotza = v as int),
-                  ),
-                  ElevatedButton(onPressed: fetchRoute, child: Text('ルートを提案')),
-                ],
-              )
-            : Card(
-                elevation: 4,
-                child: ListTile(
-                  title: Text(routeData!["gyotza_shop"]["name"]),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("距離: ${routeData!["route_summary"]["distance_km"]} km"),
-                      Text("標高差: ${routeData!["route_summary"]["elevation_gain_m"]} m"),
-                      Text("所要時間: ${routeData!["route_summary"]["duration_min"]} 分"),
-                      Text("カロリー: ${routeData!["route_summary"]["calories_kcal"]} kcal"),
-                    ],
-                  ),
-                  trailing: Icon(Icons.map),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MapScreen(
-                          shopName: routeData!["gyotza_shop"]["name"],
-                          lat: routeData!["gyotza_shop"]["lat"],
-                          lng: routeData!["gyotza_shop"]["lng"],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+        child: ListView(
+          children: [
+            const Text('自転車コースを選択', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            buildOptionButtons(
+              options: courseOptions,
+              selected: selectedCourse,
+              onSelect: (val) => setState(() => selectedCourse = val),
+              itemsPerRow: 2,
+            ),
+
+            const SizedBox(height: 24),
+            const Text('餃子の種類', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            buildOptionButtons(
+              options: gyotzaTypes,
+              selected: selectedGyotza,
+              onSelect: (val) => setState(() => selectedGyotza = val),
+              itemsPerRow: 3,
+              selectedTextColor: Colors.black87,
+            ),
+
+            const SizedBox(height: 24),
+            CheckboxListTile(
+              title: const Text('観光名所もめぐる'),
+              value: includeSightseeing,
+              activeColor: const Color(0xFFFFA410),
+              onChanged: (v) => setState(() => includeSightseeing = v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+
+            const SizedBox(height: 24),
+            TextField(
+              controller: startController,
+              decoration: const InputDecoration(
+                labelText: 'スタート地点（例：宇都宮駅）',
+                border: OutlineInputBorder(),
               ),
+            ),
+
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: fetchRoute,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFA410),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              icon: const Icon(Icons.directions_bike),
+              label: const Text('ルートを提案'),
+            ),
+          ],
+        ),
       ),
     );
   }
