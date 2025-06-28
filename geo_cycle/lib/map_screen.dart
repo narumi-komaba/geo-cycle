@@ -57,7 +57,7 @@ class MapScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: CustomAppBar(title: "$shopNameのルート"),
+      appBar: CustomAppBar(),
       body: FlutterMap(
         options: MapOptions(
           bounds: bounds,

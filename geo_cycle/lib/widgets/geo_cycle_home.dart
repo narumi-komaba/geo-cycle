@@ -98,7 +98,7 @@ class _GeoCycleHomeState extends State<GeoCycleHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(showBackButton: false),
+      appBar: const CustomAppBar(),
       body: LoadingOverlay(
         isLoading: isLoading,
         child: Padding(

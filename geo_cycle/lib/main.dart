@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'widgets/custom_app_bar.dart';
 import 'widgets/loading_overlay.dart';
 import 'search_results_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() => runApp(GeoCycleApp());
 
@@ -15,6 +15,7 @@ class GeoCycleApp extends StatelessWidget {
       title: '餃輪 GeoCycle',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        textTheme: GoogleFonts.notoSansJpTextTheme(),
         primaryColor: const Color(0xFFFFA410),
         scaffoldBackgroundColor: Colors.white,
       ),
@@ -30,13 +31,20 @@ class GeoCycleHome extends StatefulWidget {
 
 class _GeoCycleHomeState extends State<GeoCycleHome> {
   String selectedCourse = '半日コース';
-  String selectedGyotza = '焼き餃子';
+  late Set<String> selectedGyozaTypes;
   bool includeSightseeing = true;
   bool isLoading = false;
   final TextEditingController startController = TextEditingController();
 
   final List<String> courseOptions = ['半日コース', '1日コース'];
   final List<String> gyotzaTypes = ['焼き餃子', '揚げ餃子', '水餃子'];
+
+  @override
+  void initState() {
+    super.initState();
+    startController.text = '宇都宮駅';
+    selectedGyozaTypes = gyotzaTypes.toSet();
+  }
 
   Future<void> fetchRoute() async {
     setState(() => isLoading = true);
@@ -46,7 +54,7 @@ class _GeoCycleHomeState extends State<GeoCycleHome> {
         : startController.text.trim();
     final body = jsonEncode({
       'course_type': selectedCourse,
-      'gyoza_type': selectedGyotza,
+      'gyoza_type': selectedGyozaTypes.toList(),
       'include_sightseeing': includeSightseeing,
       'start_point': startPoint,
     });
@@ -109,10 +117,44 @@ class _GeoCycleHomeState extends State<GeoCycleHome> {
     );
   }
 
+  Widget buildMultiSelectButtons({
+    required List<String> options,
+    required Set<String> selectedValues,
+    required void Function(String, bool) onSelect,
+    required int itemsPerRow,
+  }) {
+    final spacing = 12.0;
+    final itemWidth = (MediaQuery.of(context).size.width - 32 - spacing * (itemsPerRow - 1)) / itemsPerRow;
+
+    return Wrap(
+      spacing: spacing,
+      runSpacing: spacing,
+      children: options.map((opt) {
+        final isSelected = selectedValues.contains(opt);
+        return SizedBox(
+          width: itemWidth,
+          height: 48,
+          child: OutlinedButton(
+            onPressed: () => onSelect(opt, !isSelected),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: isSelected ? const Color(0xFFFFA410) : Colors.white,
+              foregroundColor: Colors.black87,
+              side: BorderSide(
+                color: isSelected ? const Color(0xFFFFA410) : Colors.grey.shade400,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(opt, style: const TextStyle(fontSize: 14)),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(showBackButton: false),
+      appBar: const CustomAppBar(),
       body: LoadingOverlay(
         isLoading: isLoading,
         child: Padding(
@@ -129,14 +171,21 @@ class _GeoCycleHomeState extends State<GeoCycleHome> {
               ),
 
               const SizedBox(height: 24),
-              const Text('餃子の種類', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('餃子の種類（複数選択可）', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              buildOptionButtons(
+              buildMultiSelectButtons(
                 options: gyotzaTypes,
-                selected: selectedGyotza,
-                onSelect: (val) => setState(() => selectedGyotza = val),
+                selectedValues: selectedGyozaTypes,
+                onSelect: (val, selected) {
+                  setState(() {
+                    if (selected) {
+                      selectedGyozaTypes.add(val);
+                    } else {
+                      selectedGyozaTypes.remove(val);
+                    }
+                  });
+                },
                 itemsPerRow: 3,
-                selectedTextColor: Colors.black87,
               ),
 
               const SizedBox(height: 24),

@@ -10,14 +10,86 @@ class SearchResultsScreen extends StatelessWidget {
 
   double _calculateBurnRatio(Map<String, dynamic> summary) {
     final burned = (summary["calories_kcal"] ?? 0).toDouble();
-    final intake = (summary["gyoza_calories"] ?? 1).toDouble(); // 0除算対策
+    final intake = (summary["gyoza_calories"] ?? 1).toDouble();
     return (burned / intake).clamp(0.0, 1.0);
+  }
+
+  Widget _buildLabelValueAligned({
+    required IconData icon,
+    required String label,
+    required String value,
+    double labelWidth = 66.4,
+    double valueWidth = 62.7,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.grey),
+          const SizedBox(width: 8),
+          Flexible(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < (labelWidth + valueWidth + 16);
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: labelWidth,
+                        child: Text(
+                          "$label：",
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: valueWidth,
+                          child: Text(
+                            value,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                } else {
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width: labelWidth,
+                        child: Text(
+                          "$label：",
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: valueWidth,
+                        child: Text(
+                          value,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "検索結果"),
+      appBar: const CustomAppBar(),
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
         itemCount: results.length,
@@ -61,16 +133,13 @@ class SearchResultsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
                       Text(description),
                       const SizedBox(height: 12),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // めぐるスポット
                           Expanded(
                             flex: 5,
                             child: Container(
@@ -96,97 +165,36 @@ class SearchResultsScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          // 距離など
                           Expanded(
                             flex: 5,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(children: [
-                                  const Icon(Icons.route, size: 20, color: Colors.grey),
-                                  const SizedBox(width: 8),
-                                  const SizedBox(
-                                      width: 80,
-                                      child: Text("距離",
-                                          textAlign: TextAlign.left,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 13,
-                                            ))),
-                                  const Text("："),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text("${summary["distance_km"]} km",
-                                          textAlign: TextAlign.right))
-                                ]),
-                                Row(children: [
-                                  const Icon(Icons.terrain, size: 20, color: Colors.grey),
-                                  const SizedBox(width: 8),
-                                  const SizedBox(
-                                      width: 80,
-                                      child: Text("標高差",
-                                          textAlign: TextAlign.left,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 13,
-                                            ))),
-                                  const Text("："),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text("${summary["elevation_gain_m"]} m",
-                                          textAlign: TextAlign.right))
-                                ]),
-                                Row(children: [
-                                  const Icon(Icons.timer, size: 20, color: Colors.grey),
-                                  const SizedBox(width: 8),
-                                  const SizedBox(
-                                      width: 80,
-                                      child: Text("所要時間",
-                                          textAlign: TextAlign.left,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 13,
-                                            ))),
-                                  const Text("："),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text("${summary["duration_min"]} 分",
-                                          textAlign: TextAlign.right))
-                                ]),
-                                Row(children: [
-                                  const Icon(Icons.local_fire_department, size: 20, color: Colors.grey),
-                                  const SizedBox(width: 8),
-                                  const SizedBox(
-                                      width: 80,
-                                      child: Text("消費カロリー",
-                                          textAlign: TextAlign.left,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 13,
-                                            ))),
-                                  const Text("："),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text("${summary["calories_kcal"]} kcal",
-                                          textAlign: TextAlign.right))
-                                ]),
-                                Row(children: [
-                                  const Icon(Icons.fastfood, size: 20, color: Colors.grey),
-                                  const SizedBox(width: 8),
-                                  const SizedBox(
-                                      width: 80,
-                                      child: Text("摂取カロリー",
-                                          textAlign: TextAlign.left,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 13,
-                                            ))),
-                                  const Text("："),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text("${summary["gyoza_calories"]} kcal",
-                                          textAlign: TextAlign.right))
-                                ]),
+                                _buildLabelValueAligned(
+                                  icon: Icons.route,
+                                  label: "距離",
+                                  value: "${summary["distance_km"]} km",
+                                ),
+                                _buildLabelValueAligned(
+                                  icon: Icons.terrain,
+                                  label: "標高差",
+                                  value: "${summary["elevation_gain_m"]} m",
+                                ),
+                                _buildLabelValueAligned(
+                                  icon: Icons.timer,
+                                  label: "所要時間",
+                                  value: "${summary["duration_min"]} 分",
+                                ),
+                                _buildLabelValueAligned(
+                                  icon: Icons.local_fire_department,
+                                  label: "消費",
+                                  value: "${summary["calories_kcal"]} kcal",
+                                ),
+                                _buildLabelValueAligned(
+                                  icon: Icons.fastfood,
+                                  label: "摂取",
+                                  value: "${summary["gyoza_calories"]} kcal",
+                                ),
                                 const SizedBox(height: 12),
                                 Text("カロリー消費率", style: TextStyle(fontSize: 13)),
                                 const SizedBox(height: 6),
@@ -195,14 +203,14 @@ class SearchResultsScreen extends StatelessWidget {
                                   child: LinearProgressIndicator(
                                     value: _calculateBurnRatio(summary),
                                     backgroundColor: Colors.grey[300],
-                                    color: Color(0xFFFFA410),
-                                    minHeight: 20, // ← バーの高さ（太さ）を大きく
+                                    color: const Color(0xFFFFA410),
+                                    minHeight: 20,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   "${(_calculateBurnRatio(summary) * 100).clamp(0, 999).toStringAsFixed(1)}%",
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                                   textAlign: TextAlign.right,
                                 ),
                               ],
@@ -227,7 +235,7 @@ class SearchResultsScreen extends StatelessWidget {
                                   stopCoords: List<List<double>>.from(result["stop_coords"].map((p) => List<double>.from(p))),
                                   stopNames: List<String>.from(result['stops']),
                                   spotDetails: List<Map<String, dynamic>>.from(result['spot_details']),
-                                )
+                                ),
                               ),
                             );
                           },

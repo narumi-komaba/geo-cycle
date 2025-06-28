@@ -79,7 +79,7 @@ class CourseDetailScreen extends StatelessWidget {
     final totalPrice = spotDetails.fold<int>(0, (sum, item) => sum + ((item['price'] ?? 0) as num).toInt());
 
     return Scaffold(
-      appBar: CustomAppBar(title: shopName),
+      appBar: CustomAppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -158,9 +158,10 @@ class CourseDetailScreen extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 16),
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  child: SizedBox(
-                    height: 160,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 160), // 高さ160を最小値に変更
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start, // 高さが違う場合の調整
                       children: [
                         if (spot['photo_url'] != null)
                           Builder(builder: (_) {
@@ -179,7 +180,7 @@ class CourseDetailScreen extends StatelessWidget {
                               child: Image.network(
                                 imageUrl,
                                 width: 140,
-                                height: 160,
+                                height: 160, // 固定でOK
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, _, __) => const SizedBox(
                                   width: 140,
@@ -194,6 +195,7 @@ class CourseDetailScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min, // 子の高さに合わせる
                               children: [
                                 Text(spot['name'] ?? '',
                                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -202,7 +204,7 @@ class CourseDetailScreen extends StatelessWidget {
                                     style: const TextStyle(fontSize: 13),
                                     maxLines: 3,
                                     overflow: TextOverflow.ellipsis),
-                                const Spacer(),
+                                const SizedBox(height: 8),
                                 Text(spot['menu'] ?? '', style: const TextStyle(fontSize: 13)),
                                 const SizedBox(height: 4),
                                 Row(
@@ -237,7 +239,7 @@ class CourseDetailScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => Scaffold(
-                        appBar: CustomAppBar(title: "コースマップ"),
+                        appBar: CustomAppBar(),
                         body: MapArea(
                           shopName: shopName,
                           routePolyline: routePolyline,

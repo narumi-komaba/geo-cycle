@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import vertexai
 from vertexai.generative_models import GenerativeModel
 import json, os, requests, googlemaps, polyline, re, traceback
+from typing import List
 
 app = FastAPI()
 
@@ -18,7 +19,7 @@ app.add_middleware(
 
 class RouteRequest(BaseModel):
     course_type: str
-    gyoza_type: str
+    gyoza_type: List[str]
     include_sightseeing: bool
     start_point: str
 
@@ -51,11 +52,12 @@ async def generate_route(req: RouteRequest):
 
         sightseeing_text = "観光名所（支店名まで明記）も途中に含めて、" if req.include_sightseeing else "餃子店だけで"
         course_time_text = "1-2時間" if req.course_type == "半日コース" else "2-3時間"
+        gyoza_names = "、".join(req.gyoza_type)
 
         prompt = f"""
 あなたは宇都宮の観光に詳しいサイクリングツアーガイドです。
 出発地「{start_point}」から出発して、{sightseeing_text}2〜3か所を巡って出発地点に戻るルートを考えてください。
-餃子の種類は「{req.gyoza_type}」、コースの所要時間は{req.course_type}（車で{course_time_text}相当）です。
+餃子の種類は「{gyoza_names}」、コースの所要時間は{req.course_type}（車で{course_time_text}相当）です。
 
 以下の形式で3つの異なるJSONオブジェクトを配列として出力してください：
 
@@ -129,7 +131,7 @@ async def generate_route(req: RouteRequest):
             calorie = mets * weight * (total_duration / 60)
 
             spot_details = shop_info.get("spot_details", [])
-            gyoza_total_calories = sum(int(s.get("calorie") or 0) for s in spot_details)
+            gyoza_total_calories = round(sum(float(s.get("calorie") or 0) for s in spot_details))
 
             for i, spot in enumerate(spot_details):
                 stop_name = stops[i + 1] if i + 1 < len(stops) else ""
@@ -146,7 +148,7 @@ async def generate_route(req: RouteRequest):
                     "distance_km": round(total_distance, 2),
                     "duration_min": round(total_duration),
                     "elevation_gain_m": round(elevation_gain, 1) if elevation_gain >= 0 else "未取得",
-                    "calories_kcal": round(calorie, 1),
+                    "calories_kcal": round(calorie, 0),
                     "gyoza_calories": gyoza_total_calories
                 },
                 "course_description": shop_info.get("course_description", "宇都宮をぐるりと楽しめるおすすめコースです！"),
