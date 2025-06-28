@@ -49,30 +49,32 @@ async def generate_route(req: RouteRequest):
         if distance_km > 100:
             return JSONResponse(status_code=200, content={"error": "宇都宮から遠すぎるためコースを生成できません"})
 
-        sightseeing_text = "観光名所（支店名まで明記）も途中に含めて、" if req.include_sightseeing else ""
+        sightseeing_text = "観光名所（支店名まで明記）も途中に含めて、" if req.include_sightseeing else "餃子店だけで"
+        course_time_text = "1-2時間" if req.course_type == "半日コース" else "2-3時間"
+
         prompt = f"""
 あなたは宇都宮の観光に詳しいサイクリングツアーガイドです。
 出発地「{start_point}」から出発して、{sightseeing_text}2〜3か所を巡って出発地点に戻るルートを考えてください。
-餃子の種類は「{req.gyoza_type}」、コースの所要時間は{req.course_type}（車で{('1-2時間' if req.course_type=='半日コース' else '2-3時間')}相当）です。
+餃子の種類は「{req.gyoza_type}」、コースの所要時間は{req.course_type}（車で{course_time_text}相当）です。
 
 以下の形式で3つの異なるJSONオブジェクトを配列として出力してください：
 
-```json
+```
 [
   {{
-    "name": "餃子の〇〇",
-    "description": "〇〇を巡る絶景とグルメのコース。初心者にもおすすめです。",
-    "stops": [
-      "宇都宮駅",
-      "餃子の〇〇 本店",
-      "大谷資料館",
-      "餃子の△△ 駅東支店",
-      "宇都宮駅"
+    "course_title": "餃子満喫ライド",
+    "course_description": "ボリューム満点！ジューシーな餃子をめぐる充実コース！ 宇都宮餃子の名店を巡りながら、サイクリングで健康的に！初心者でも安心な平坦ルートで、途中には観光名所も立ち寄れます。餃子好きにはたまらない、満足度120％のルートです！",
+    "course_detail": "宇都宮餃子を楽しみながら、サイクリング初心者でも無理なく走れるルートです。〇×餃子〇〇テント××餃子という、宇都宮でも人気の餃子店をめぐります。適度な運動で餃子を堪能しながら、心も体も満足できる半日コースです！",
+    "stops": ["宇都宮駅", "餃子の〇〇 本店", "大谷資料館", "餃子の△△ 駅東支店", "宇都宮駅"],
+    "spot_details": [
+      {{"name": "餃子の〇〇 本店", "description": "野菜たっぷりのヘルシーな餃子が特徴！", "menu": "焼き餃子", "price": 400, "calorie": 180}},
+      {{"name": "大谷資料館", "description": "地下の神殿みたいな空間で、大谷石の歴史を体感できるロマンあふれる資料館！", "menu": "", "price": 800, "calorie": 0}},
+      {{"name": "餃子の△△ 駅東支店", "description": "モチモチ皮のジューシー水餃子が名物", "menu": "水餃子", "price": 420, "calorie": 160}}
     ]
-  }},
-  ...
+  }}
 ]
 """
+
         response = model.generate_content(prompt)
         print("Gemini応答:", response.text)
         match = re.search(r"```(?:json)?\s*(\[.*\])\s*```", response.text, re.DOTALL)
@@ -84,6 +86,7 @@ async def generate_route(req: RouteRequest):
         for shop_info in route_list:
             stops = shop_info.get("stops", [])
             coords = []
+            decoded_coords = []
             photos = []
             for stop in stops:
                 place = gmaps.places(query=stop + " 宇都宮")
@@ -91,12 +94,10 @@ async def generate_route(req: RouteRequest):
                     raise Exception(f"場所が見つかりませんでした: {stop}")
                 loc = place["results"][0]["geometry"]["location"]
                 coords.append(f"{loc['lat']},{loc['lng']}")
+                decoded_coords.append([loc['lat'], loc['lng']])
                 photo_ref = place["results"][0].get("photos", [{}])[0].get("photo_reference")
-                if photo_ref:
-                    photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_ref}&key={os.getenv('MAPS_API_KEY')}"
-                    photos.append(photo_url)
-                else:
-                    photos.append(None)
+                photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_ref}&key={os.getenv('MAPS_API_KEY')}" if photo_ref else None
+                photos.append(photo_url)
 
             origin = coords[0]
             destination = coords[-1]
@@ -106,7 +107,7 @@ async def generate_route(req: RouteRequest):
                 raise Exception("ルートが見つかりません")
             legs = directions[0]['legs']
             total_distance = sum(leg['distance']['value'] for leg in legs) / 1000
-            total_duration = sum(leg['duration']['value'] for leg in legs) / 60
+            total_duration = sum(leg['duration']['value'] for leg in legs) / 25
             poly = directions[0]['overview_polyline']['points']
             decoded = polyline.decode(poly)
 
@@ -127,26 +128,33 @@ async def generate_route(req: RouteRequest):
             weight = 60
             calorie = mets * weight * (total_duration / 60)
 
-            first_place = gmaps.places(query=stops[1] + " 宇都宮")
-            first_stop_place = first_place["results"][0]["geometry"]["location"]
-            photo_ref = first_place["results"][0].get("photos", [{}])[0].get("photo_reference")
-            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_ref}&key={os.getenv('MAPS_API_KEY')}" if photo_ref else None
+            spot_details = shop_info.get("spot_details", [])
+            gyoza_total_calories = sum(int(s.get("calorie") or 0) for s in spot_details)
+
+            for i, spot in enumerate(spot_details):
+                stop_name = stops[i + 1] if i + 1 < len(stops) else ""
+                place = gmaps.places(query=stop_name + " 宇都宮")
+                photo_ref = place.get("results", [{}])[0].get("photos", [{}])[0].get("photo_reference")
+                if photo_ref:
+                    spot["photo_url"] = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_ref}&key={os.getenv('MAPS_API_KEY')}"
+
+            photo_url = shop_info.get("photo_url") or (photos[0] if photos else None)
 
             result_list.append({
-                "gyotza_shop": {
-                    "name": shop_info["name"],
-                    "lat": first_stop_place["lat"],
-                    "lng": first_stop_place["lng"],
-                    "photo_url": photo_url
-                },
+                "course_title": shop_info.get("course_title", "おすすめ餃子ライド"),
                 "route_summary": {
                     "distance_km": round(total_distance, 2),
                     "duration_min": round(total_duration),
                     "elevation_gain_m": round(elevation_gain, 1) if elevation_gain >= 0 else "未取得",
-                    "calories_kcal": round(calorie, 1)
+                    "calories_kcal": round(calorie, 1),
+                    "gyoza_calories": gyoza_total_calories
                 },
-                "course_description": shop_info.get("description", "宇都宮をぐるりと楽しめるおすすめコースです"),
-                "stops": shop_info.get("stops", [])
+                "course_description": shop_info.get("course_description", "宇都宮をぐるりと楽しめるおすすめコースです！"),
+                "course_detail": shop_info.get("course_detail", ""),
+                "stops": shop_info.get("stops", []),
+                "route_polyline": decoded,
+                "stop_coords": decoded_coords,
+                "spot_details": spot_details
             })
 
         return result_list

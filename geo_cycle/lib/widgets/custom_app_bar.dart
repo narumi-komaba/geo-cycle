@@ -13,22 +13,22 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 2,
+      backgroundColor: const Color(0xFFFFA410),
+      elevation: 0,
       leading: showBackButton
           ? IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.of(context).maybePop(),
             )
           : null,
       title: title != null
           ? Text(
               title!,
-              style: const TextStyle(color: Colors.black),
+              style: const TextStyle(color: Colors.white),
             )
           : Image.asset(
               'assets/images/GeoCycle_logo.png',
-              height: 40,
+              height: 50,
               alignment: Alignment.centerLeft,
             ),
       centerTitle: false,

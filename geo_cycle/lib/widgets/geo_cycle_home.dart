@@ -1,31 +1,17 @@
+// lib/widgets/geo_cycle_home.dart
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'widgets/custom_app_bar.dart';
-import 'widgets/loading_overlay.dart';
-import 'search_results_screen.dart';
-
-void main() => runApp(GeoCycleApp());
-
-class GeoCycleApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '餃輪 GeoCycle',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: const Color(0xFFFFA410),
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      home: GeoCycleHome(),
-    );
-  }
-}
+import 'custom_app_bar.dart';
+import 'loading_overlay.dart';
+import '../search_results_screen.dart';
 
 class GeoCycleHome extends StatefulWidget {
+  const GeoCycleHome({super.key});
+
   @override
-  _GeoCycleHomeState createState() => _GeoCycleHomeState();
+  State<GeoCycleHome> createState() => _GeoCycleHomeState();
 }
 
 class _GeoCycleHomeState extends State<GeoCycleHome> {
